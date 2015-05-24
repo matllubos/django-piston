@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import re
 
+from collections import OrderedDict
+
 from django.http import HttpResponse
 from django.utils.translation import ugettext_lazy as _
 from django.db.models.fields.related import RelatedField
@@ -9,7 +11,6 @@ from django.template.defaultfilters import lower
 from django.db import models
 from django.utils import six
 from django.utils.encoding import force_text
-from django.utils.datastructures import SortedDict
 
 from copy import deepcopy
 
@@ -261,7 +262,7 @@ class RestFieldset(object):
         return RestFieldset(*fields)
 
     def __init__(self, *fields):
-        self.fields_map = SortedDict()
+        self.fields_map = OrderedDict()
         for field in fields:
             if not isinstance(field, RestField):
                 field = RestField(field)
@@ -286,7 +287,7 @@ class RestFieldset(object):
         assert isinstance(rest_fieldset, RestFieldset)
 
         fields_map = self.fields_map
-        self.fields_map = SortedDict()
+        self.fields_map = OrderedDict()
 
         for name, rf in fields_map.items():
             if name in rest_fieldset.fields_map:
@@ -310,7 +311,7 @@ class RestFieldset(object):
         assert isinstance(rest_fieldset, RestFieldset)
 
         fields_map = self.fields_map
-        self.fields_map = SortedDict()
+        self.fields_map = OrderedDict()
 
         for name, rf in fields_map.items():
             if name not in rest_fieldset.fields_map:

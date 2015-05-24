@@ -12,6 +12,7 @@ class NoFieldsetResponse(HeadersResponse):
 
     fieldset = False
 
+
 class RestResponse(NoFieldsetResponse):
 
     def __init__(self, msg, http_headers={}, code=200):

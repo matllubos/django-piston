@@ -2,18 +2,18 @@ from __future__ import unicode_literals
 
 import decimal
 import json
-import StringIO
 import time
+
+from six.moves import cStringIO
 
 from django.db.models.fields import FieldDoesNotExist
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.utils.encoding import smart_unicode, force_text
+from django.utils.encoding import smart_text, force_text
 from django.utils.xmlutils import SimplerXMLGenerator
 from django.core.serializers.json import DateTimeAwareJSONEncoder
 from django.db.models.base import Model
 from django.conf import settings
-from django.utils.datastructures import SortedDict
 
 from piston.file_generator import CsvGenerator, XlsxGenerator, PdfGenerator
 
@@ -49,7 +49,7 @@ def get_converter(format):
     """
     Gets an converter, returns the class and a content-type.
     """
-    if converters.has_key(format):
+    if format in converters:
         return converters.get(format)
 
     raise ValueError('No converter found for type %s' % format)
@@ -138,7 +138,7 @@ class XMLConverter(Converter):
                 self._to_xml(xml, item)
                 xml.endElement('resource')
         elif isinstance(data, dict):
-            for key, value in data.iteritems():
+            for key, value in data.items():
                 xml.startElement(key, {})
                 self._to_xml(xml, value)
                 xml.endElement(key)
@@ -146,7 +146,7 @@ class XMLConverter(Converter):
             xml.characters(smart_unicode(data))
 
     def encode(self, request, converted_data, resource, result):
-        stream = StringIO.StringIO()
+        stream = cStringIO.StringIO()
 
         xml = SimplerXMLGenerator(stream, "utf-8")
         xml.startDocument()
@@ -237,7 +237,7 @@ class GeneratorConverter(Converter):
         return result
 
     def encode(self, request, converted_data, resource, result):
-        output = StringIO.StringIO()
+        output = cStringIO.StringIO()
         fieldset = FieldsetGenerator(request, resource, converted_data).generate()
         self.generator_class().generate(
             self._render_headers(fieldset),

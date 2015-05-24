@@ -13,11 +13,9 @@ from django.utils.translation import ugettext as _
 from chamber.utils.datastructures import Enum
 
 from .exception import MimerDataException, UnsupportedMediaTypeException
-from .utils import coerce_put_post
+from .utils import coerce_put_post, rfs
 from .converter import get_converter_from_request
 from .converter.datastructures import ModelSortedDict
-from piston.utils import rfs
-
 
 value_serializers = []
 
@@ -155,7 +153,7 @@ class DictSerializer(Serializer):
     def _to_python(self, request, thing, serialization_format, requested_fieldset=None,
                    extended_fieldset=None, detailed=False, exclude_fields=None, **kwargs):
         return dict([(k, self._to_python_chain(request, v, serialization_format, **kwargs))
-                     for k, v in thing.iteritems()])
+                     for k, v in thing.items()])
 
     def _can_transform_to_python(self, thing):
         return isinstance(thing, dict)

@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import re
 import warnings
+import six
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -16,10 +17,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from functools import update_wrapper
 
 from chamber.shortcuts import get_object_or_none
+from chamber.exceptions import PersistenceException
 
 from .paginator import Paginator
-from .response import (HeadersResponse, RestErrorResponse, RestErrorsResponse, RestCreatedResponse,
-                       RestNoConetentResponse)
+from .response import (HeadersResponse, RestErrorResponse, RestErrorsResponse, RestNoConetentResponse)
 from .exception import (RestException, ConflictException, NotAllowedException, DataInvalidException,
                         ResourceNotFoundException, NotAllowedMethodException, DuplicateEntryException,
                         UnsupportedMediaTypeException, MimerDataException)
@@ -133,7 +134,7 @@ class PermissionsResourceMixin(object):
         return 'options' in self.allowed_methods and hasattr(self, 'options')
 
 
-class BaseResource(PermissionsResourceMixin):
+class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixin)):
     """
     BaseResource that gives you CRUD for free.
     You are supposed to subclass this for specific
@@ -143,7 +144,6 @@ class BaseResource(PermissionsResourceMixin):
     receive a request as the first argument from the
     resource. Use this for checking `request.user`, etc.
     """
-    __metaclass__ = ResourceMetaClass
 
     allowed_methods = ('get', 'post', 'put', 'delete', 'head', 'options')
     serializer = ResourceSerializer
@@ -438,9 +438,8 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             return RestErrorsResponse(ex.errors)
         except NotAllowedException:
             raise
-        except RestException as ex:
+        except (RestException, PersistenceException) as ex:
             return RestErrorResponse(ex.message)
-        return RestCreatedResponse(inst)
 
     def get(self):
         pk = self.kwargs.get(self.pk_name)
@@ -452,7 +451,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             qs = self._order_queryset(qs)
             paginator = Paginator(qs, self.request)
             return HeadersResponse(paginator.page_qs, {'X-Total': paginator.total})
-        except RestException as ex:
+        except (RestException, PersistenceException) as ex:
             return RestErrorResponse(ex.message)
         except Http404:
             raise
@@ -469,7 +468,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             return RestErrorsResponse(ex.errors)
         except (ConflictException, NotAllowedException):
             raise
-        except RestException as ex:
+        except (RestException, PersistenceException) as ex:
             return RestErrorResponse(ex.message)
 
     def delete(self):
@@ -477,7 +476,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             pk = self.kwargs.get(self.pk_name)
             self._delete(pk)
             return RestNoConetentResponse()
-        except RestException as ex:
+        except (RestException, PersistenceException) as ex:
             return RestErrorResponse(ex.message)
 
     def _delete(self, pk, via=None):

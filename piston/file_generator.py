@@ -2,8 +2,9 @@ from __future__ import unicode_literals
 
 import os
 import csv
-import cStringIO
 import codecs
+
+from six.moves import cStringIO
 
 from datetime import datetime, date
 from decimal import Decimal

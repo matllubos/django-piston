@@ -1,11 +1,12 @@
-from django.utils.datastructures import SortedDict
+from collections import OrderedDict
+
 from django.utils.encoding import force_text
 from django.db import models
 from django.db.models.fields import FieldDoesNotExist
 from django.core.exceptions import ObjectDoesNotExist
 from django.template.defaultfilters import capfirst
+from django.utils.encoding import python_2_unicode_compatible
 
-from collections import OrderedDict
 from piston.utils import split_fields, is_match, get_model_from_descriptor
 
 
@@ -17,6 +18,7 @@ class ModelSortedDict(OrderedDict):
         self.resource = resource
 
 
+@python_2_unicode_compatible
 class Field(object):
 
     def __init__(self, key_path, label_path):
@@ -25,9 +27,6 @@ class Field(object):
 
     def __str__(self):
         return capfirst(' '.join(map(force_text, self.key_path))).strip()
-
-    def __unicode__(self):
-        return capfirst(' '.join(map(force_text, self.label_path))).strip()
 
     def __hash__(self):
             return hash('__'.join(self.key_path))
@@ -126,7 +125,7 @@ class DataFieldset(object):
     def __init__(self, data):
         self.root = {}
         # SordedDict is used as SortedSet
-        self.fieldset = SortedDict()
+        self.fieldset = OrderedDict()
         self._init_data(data)
 
     def _tree_contains(self, key_path):

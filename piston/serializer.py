@@ -126,7 +126,7 @@ class ResourceSerializer(Serializer):
         if rm in ('POST', 'PUT'):
             try:
                 converter, _ = get_converter_from_request(request, True)
-                request.data = converter().decode(request, request.body)
+                request.data = converter().decode(request, force_text(request.body))
             except (TypeError, ValueError):
                 raise MimerDataException
             except NotImplementedError:

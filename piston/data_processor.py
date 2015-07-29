@@ -1,7 +1,8 @@
 import sys
 import base64
-import cStringIO
 import inspect
+
+from six.moves import cStringIO
 
 from django.forms.fields import FileField
 from django.utils.translation import ugettext_lazy as _

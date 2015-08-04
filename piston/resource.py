@@ -220,7 +220,6 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
         return self.serializer(self).deserialize(self.request)
 
     def _get_error_response(self, exception):
-
         responses = {
             MimerDataException: rc.BAD_REQUEST,
             NotAllowedException: rc.FORBIDDEN,
@@ -248,7 +247,8 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
             else:
                 self._check_permission(rm)
                 result = meth()
-        except (MimerDataException, NotAllowedException, UnsupportedMediaTypeException, Http404) as ex:
+        except (MimerDataException, NotAllowedException, UnsupportedMediaTypeException, Http404,
+                ConflictException, DuplicateEntryException) as ex:
             result = self._get_error_response(ex)
             fieldset = False
 
@@ -427,8 +427,11 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
         """
         raise NotImplementedError
 
+    def _get_pk(self):
+        return self.kwargs.get(self.pk_name)
+
     def post(self):
-        pk = self.kwargs.get(self.pk_name)
+        pk = self._get_pk()
         data = self._flatten_dict(self.request.data)
         if pk and self._exists_obj(pk=pk):
             raise DuplicateEntryException
@@ -442,7 +445,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             return RestErrorResponse(ex.message)
 
     def get(self):
-        pk = self.kwargs.get(self.pk_name)
+        pk = self._get_pk()
         if pk:
             return self._get_obj_or_404()
         try:
@@ -459,7 +462,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             return HeadersResponse([], {'X-Total': 0})
 
     def put(self):
-        pk = self.kwargs.get(self.pk_name)
+        pk = self._get_pk()
         data = self._flatten_dict(self.request.data)
         data[self.pk_field_name] = pk
         try:
@@ -473,7 +476,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
 
     def delete(self):
         try:
-            pk = self.kwargs.get(self.pk_name)
+            pk = self._get_pk()
             self._delete(pk)
             return RestNoConetentResponse()
         except (RestException, PersistenceException) as ex:

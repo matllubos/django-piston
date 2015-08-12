@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import six
+
 import os
 import csv
 import codecs
@@ -66,7 +68,7 @@ class CsvGenerator(object):
             value = force_text(value.quantize(TWOPLACES)).replace('.', ',')
         else:
             value = force_text(value)
-        return value
+        return value.replace('&nbsp;', ' ')
 
 
 class UnicodeWriter:
@@ -124,6 +126,8 @@ if xlsxwriter:
                         ws.write(row, col, val, date_format)
                     elif isinstance(val, (Decimal, float)):
                         ws.write(row, col, val, decimal_format)
+                    elif isinstance(val, six.string_types):
+                        ws.write(row, col, val)
                     else:
                         ws.write(row, col, val)
                 row += 1

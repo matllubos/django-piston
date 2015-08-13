@@ -38,18 +38,21 @@ TWOPLACES = Decimal(10) ** -2
 
 class CsvGenerator(object):
 
-    def __init__(self, delimiter=b';', quotechar=b'"', quoting=csv.QUOTE_ALL, encoding='utf-8'):
+    def __init__(self, delimiter=r';', quotechar=r'"', quoting=csv.QUOTE_ALL, encoding='utf-8'):
         self.encoding = encoding
         self.quotechar = quotechar
         self.quoting = quoting
         self.delimiter = delimiter
 
     def generate(self, header, data, output_stream):
-        writer = UnicodeWriter(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
-
+        if six.PY2:
+            writer = Py2CSV(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
+        else:
+            writer = Py3CSV(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
+       
         if header:
             writer.writerow(self._prepare_list(header))
-
+    
         for row in data:
             writer.writerow(self._prepare_list(row))
 
@@ -70,8 +73,8 @@ class CsvGenerator(object):
             value = force_text(value)
         return value.replace('&nbsp;', ' ')
 
-
-class UnicodeWriter:
+    
+class Py2CSV(object):
     """
     A CSV writer which will write rows to CSV file "f",
     which is encoded in the given encoding.
@@ -80,7 +83,7 @@ class UnicodeWriter:
 
     def __init__(self, f, dialect=csv.excel, encoding='utf-8', **kwds):
         # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
+        self.queue = cStringIO()
         self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
         self.stream = f
         self.stream.write(codecs.BOM_UTF8)  # BOM for Excel
@@ -101,6 +104,20 @@ class UnicodeWriter:
             self.writerow(row)
 
 
+class Py3CSV(object):
+    
+    def __init__(self, f, dialect=csv.excel, encoding='utf-8', **kwds):
+        self.writer = csv.writer(f, dialect=dialect, **kwds)
+        f.write(force_text(codecs.BOM_UTF8))  # BOM for Excel
+
+    def writerow(self, row):
+        self.writer.writerow(row)
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+    
+
 if xlsxwriter:
     class XlsxGenerator(object):
 
@@ -115,7 +132,8 @@ if xlsxwriter:
             row = 0
             if header:
                 for col, head in enumerate(header):
-                    ws.write(row, col, unicode(head))
+                    print(head)
+                    ws.write(row, col, force_text(head))
                 row += 1
 
             for data_row in data:
@@ -151,5 +169,5 @@ if pisa:
             template = get_template(self.template_name)
             html = template.render(context)
 
-            pisa.pisaDocument(cStringIO.StringIO(html.encode(self.encoding)), output_stream, encoding=self.encoding,
+            pisa.pisaDocument(cStringIO(html.encode(self.encoding)), output_stream, encoding=self.encoding,
                               link_callback=fetch_resources)

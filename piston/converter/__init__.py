@@ -5,6 +5,7 @@ import json
 import time
 
 from six.moves import cStringIO
+from six import BytesIO
 
 from django.db.models.fields import FieldDoesNotExist
 from django.core.exceptions import ObjectDoesNotExist
@@ -236,8 +237,11 @@ class GeneratorConverter(Converter):
             result.append(out_row)
         return result
 
+    def _get_output(self):
+        return BytesIO()
+
     def encode(self, request, converted_data, resource, result):
-        output = cStringIO.StringIO()
+        output = self._get_output()
         fieldset = FieldsetGenerator(request, resource, converted_data).generate()
         self.generator_class().generate(
             self._render_headers(fieldset),
@@ -250,6 +254,9 @@ class GeneratorConverter(Converter):
 @register('csv', 'text/csv; charset=utf-8')
 class CsvConverter(GeneratorConverter):
     generator_class = CsvGenerator
+
+    def _get_output(self):
+        return cStringIO()
 
 
 if XlsxGenerator:

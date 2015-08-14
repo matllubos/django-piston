@@ -132,7 +132,6 @@ if xlsxwriter:
             row = 0
             if header:
                 for col, head in enumerate(header):
-                    print(head)
                     ws.write(row, col, force_text(head))
                 row += 1
 

@@ -13,6 +13,7 @@ from django.utils.translation import ugettext as _
 from django.utils.html import conditional_escape
 
 from chamber.utils.datastructures import Enum
+from chamber.utils import get_class_method
 
 from .exception import MimerDataException, UnsupportedMediaTypeException
 from .utils import coerce_put_post, rfs
@@ -142,9 +143,9 @@ class ResourceSerializer(Serializer):
 @register
 class StringSerializer(Serializer):
 
-    def _to_python(self, request, thing, serialization_format, **kwargs):
+    def _to_python(self, request, thing, serialization_format, allow_tags=False, **kwargs):
         res = force_text(thing, strings_only=True)
-        if isinstance(res, six.string_types):
+        if isinstance(res, six.string_types) and not allow_tags:
             return conditional_escape(res)
         else:
             return res
@@ -259,17 +260,20 @@ class ModelSerializer(Serializer):
 
         if len(method_kwargs_names) == len(method_kwargs):
             return self._to_python_chain(request, self._val_to_raw_verbose(method(**method_kwargs)),
-                                         serialization_format, **kwargs)
+                                         serialization_format, allow_tags=getattr(method, 'allow_tags', False),
+                                         **kwargs)
 
     def _model_field_to_python(self, field, request, obj, serialization_format, **kwargs):
         if not field.rel:
             val = self._get_model_value(obj, field)
         else:
             val = getattr(obj, field.name)
-        return self._to_python_chain(request, val, serialization_format, **kwargs)
+        return self._to_python_chain(request, val, serialization_format,
+                                     allow_tags=getattr(field, 'allow_tags', False), **kwargs)
 
     def _m2m_field_to_python(self, field, request, obj, serialization_format, **kwargs):
-        return [self._to_python_chain(request, m, serialization_format, **kwargs)
+        return [self._to_python_chain(request, m, serialization_format,
+                                      allow_tags=getattr(field, 'allow_tags', False), **kwargs)
                 for m in getattr(obj, field.name).all()]
 
     def _get_reverse_excluded_fields(self, field, obj):
@@ -336,18 +340,18 @@ class ModelSerializer(Serializer):
         elif field_name in model_fields:
             return self._model_field_to_python(model_fields[field_name], request, obj, serialization_format, **kwargs)
         else:
-            try:
-                val = getattr(obj, field_name, None)
-                if hasattr(val, 'all'):
-                    return self._reverse_qs_to_python(val, field_name, request, obj, serialization_format, **kwargs)
-                elif callable(val):
-                    return self._method_to_python(val, request, obj, serialization_format, **kwargs)
-                elif isinstance(val, Model):
-                    return self._reverse_to_python(val, field_name, request, obj, serialization_format, **kwargs)
-                else:
-                    return self._to_python_chain(request, self._val_to_raw_verbose(val), serialization_format, **kwargs)
-            except:
-                return None
+            val = getattr(obj, field_name, None)
+            if hasattr(val, 'all'):
+                return self._reverse_qs_to_python(val, field_name, request, obj, serialization_format, **kwargs)
+            elif isinstance(val, Model):
+                return self._reverse_to_python(val, field_name, request, obj, serialization_format, **kwargs)
+            elif callable(val):
+                return self._method_to_python(val, request, obj, serialization_format, **kwargs)
+            else:
+                method = get_class_method(obj, field_name)
+                return self._to_python_chain(request, self._val_to_raw_verbose(val), serialization_format,
+                                                 allow_tags=method is not None and getattr(method, 'allow_tags', False),
+                                                 ** kwargs)
 
     def _fields_to_python(self, request, obj, serialization_format, fieldset, requested_fieldset, **kwargs):
         resource_method_fields = self._get_resource_method_fields(self._get_model_resource(request, obj), fieldset)

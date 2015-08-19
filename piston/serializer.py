@@ -418,7 +418,7 @@ class ModelSerializer(Serializer):
         return fieldset
 
     def _to_python(self, request, obj, serialization_format, requested_fieldset=None,
-                   extended_fieldset=None, detailed=False, exclude_fields=None, **kwargs):
+                   extended_fieldset=None, detailed=False, exclude_fields=None, allow_tags=False, **kwargs):
         exclude_fields = exclude_fields or []
         fieldset = self._get_fieldset(request, obj, extended_fieldset, requested_fieldset, exclude_fields,
                                       kwargs.get('via'), detailed)

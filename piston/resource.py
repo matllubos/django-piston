@@ -167,6 +167,12 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
         self.args = []
         self.kwargs = {}
 
+    def _flatten_dict(self, dct):
+        return {str(k): dct.get(k) for k in dct.keys()} if isinstance(dct, dict) else {}
+
+    def get_dict_data(self):
+        return self._flatten_dict(self.request.data) if hasattr(self.request, 'data') else {}
+
     def _get_serialization_format(self):
         serialization_format = self.request._rest_context.get('serialization_format',
                                                               self.serializer.SERIALIZATION_TYPES.RAW)
@@ -395,11 +401,6 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
     pk_name = 'pk'
     pk_field_name = 'id'
 
-    def _flatten_dict(self, dct):
-        if isinstance(dct, dict):
-            return dict([ (str(k), dct.get(k)) for k in dct.keys() ])
-        return {}
-
     def _get_queryset(self):
         """
         Should return list or db queryset
@@ -441,7 +442,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
 
     def post(self):
         pk = self._get_pk()
-        data = self._flatten_dict(self.request.data)
+        data = self.get_dict_data()
         if pk and self._exists_obj(pk=pk):
             raise DuplicateEntryException
         try:
@@ -472,7 +473,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
 
     def put(self):
         pk = self._get_pk()
-        data = self._flatten_dict(self.request.data)
+        data = self.get_dict_data()
         data[self.pk_field_name] = pk
         try:
             return self._atomic_create_or_update(data)

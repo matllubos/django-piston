@@ -32,10 +32,10 @@ class RestCreatedResponse(HeadersResponse):
         super(RestCreatedResponse, self).__init__(result=result, http_headers=http_headers, code=code)
 
 
-class RestNoConetentResponse(NoFieldsetResponse):
+class RestNoContentResponse(NoFieldsetResponse):
 
     def __init__(self, http_headers={}, code=204):
-        super(RestNoConetentResponse, self).__init__(result='', http_headers=http_headers, code=code)
+        super(RestNoContentResponse, self).__init__(result='', http_headers=http_headers, code=code)
 
 
 class RestErrorsResponse(HeadersResponse):

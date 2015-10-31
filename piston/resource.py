@@ -21,7 +21,8 @@ from chamber.exceptions import PersistenceException
 from chamber.utils import remove_diacritics
 
 from .paginator import Paginator
-from .response import (HeadersResponse, RestErrorResponse, RestErrorsResponse, RestNoConetentResponse)
+from .response import (HeadersResponse, RestErrorResponse, RestErrorsResponse, RestNoContentResponse,
+                       RestCreatedResponse)
 from .exception import (RestException, ConflictException, NotAllowedException, DataInvalidException,
                         ResourceNotFoundException, NotAllowedMethodException, DuplicateEntryException,
                         UnsupportedMediaTypeException, MimerDataException)
@@ -446,7 +447,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
         if pk and self._exists_obj(pk=pk):
             raise DuplicateEntryException
         try:
-            inst = self._atomic_create_or_update(data)
+            return RestCreatedResponse(self._atomic_create_or_update(data))
         except DataInvalidException as ex:
             return RestErrorsResponse(ex.errors)
         except NotAllowedException:
@@ -488,7 +489,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
         try:
             pk = self._get_pk()
             self._delete(pk)
-            return RestNoConetentResponse()
+            return RestNoContentResponse()
         except (RestException, PersistenceException) as ex:
             return RestErrorResponse(ex.message)
 

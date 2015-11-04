@@ -48,7 +48,7 @@ class rc_factory(object):
 
         class HttpResponseWrapper(HttpResponse):
             """
-            Wrap HttpResponse and make sure that the internal_base_content_is_iter 
+            Wrap HttpResponse and make sure that the internal_base_content_is_iter
             flag is updated when the _set_content method (via the content
             property) is called
             """
@@ -79,7 +79,7 @@ def coerce_put_post(request):
     In case we send data over PUT, Django won't
     actually look at the data and load it. We need
     to twist its arm here.
-    
+
     The try/except abominiation here is due to a bug
     in mod_python. This should fix it.
     """
@@ -137,7 +137,7 @@ class JsonObj(dict):
 
 
 def model_resources_to_dict():
-    from resource import resource_tracker
+    from piston.resource import resource_tracker
 
     model_resources = {}
     for resource in resource_tracker:

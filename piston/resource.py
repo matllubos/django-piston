@@ -21,12 +21,12 @@ from chamber.exceptions import PersistenceException
 from chamber.utils import remove_diacritics
 
 from .paginator import Paginator
-from .response import (HeadersResponse, RestErrorResponse, RestErrorsResponse, RestNoContentResponse,
-                       RestCreatedResponse)
-from .exception import (RestException, ConflictException, NotAllowedException, DataInvalidException,
+from .response import (HeadersResponse, RESTErrorResponse, RESTErrorsResponse, RESTNoContentResponse,
+                       RESTCreatedResponse)
+from .exception import (RESTException, ConflictException, NotAllowedException, DataInvalidException,
                         ResourceNotFoundException, NotAllowedMethodException, DuplicateEntryException,
                         UnsupportedMediaTypeException, MimerDataException)
-from .forms import RestModelForm
+from .forms import RESTModelForm
 from .utils import rc, set_rest_context_to_request, RFS, rfs
 from .serializer import ResourceSerializer
 from .converter import get_converter_name_from_request
@@ -368,7 +368,7 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
         return view
 
 
-class DefaultRestObjectResource(PermissionsResourceMixin):
+class DefaultRESTObjectResource(PermissionsResourceMixin):
 
     default_detailed_fields = ('id', '_obj_name')
     default_general_fields = ('id', '_obj_name')
@@ -396,7 +396,7 @@ class DefaultRestObjectResource(PermissionsResourceMixin):
         return rfs(self.guest_fields)
 
 
-class BaseObjectResource(DefaultRestObjectResource, BaseResource):
+class BaseObjectResource(DefaultRESTObjectResource, BaseResource):
 
     allowed_methods = ('get', 'post', 'put', 'delete', 'head', 'options')
     pk_name = 'pk'
@@ -447,13 +447,13 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
         if pk and self._exists_obj(pk=pk):
             raise DuplicateEntryException
         try:
-            return RestCreatedResponse(self._atomic_create_or_update(data))
+            return RESTCreatedResponse(self._atomic_create_or_update(data))
         except DataInvalidException as ex:
-            return RestErrorsResponse(ex.errors)
+            return RESTErrorsResponse(ex.errors)
         except NotAllowedException:
             raise
-        except (RestException, PersistenceException) as ex:
-            return RestErrorResponse(ex.message)
+        except (RESTException, PersistenceException) as ex:
+            return RESTErrorResponse(ex.message)
 
     def get(self):
         pk = self._get_pk()
@@ -465,8 +465,8 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
             qs = self._order_queryset(qs)
             paginator = Paginator(qs, self.request)
             return HeadersResponse(paginator.page_qs, {'X-Total': paginator.total})
-        except (RestException, PersistenceException) as ex:
-            return RestErrorResponse(ex.message)
+        except (RESTException, PersistenceException) as ex:
+            return RESTErrorResponse(ex.message)
         except Http404:
             raise
         except Exception as ex:
@@ -479,19 +479,19 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
         try:
             return self._atomic_create_or_update(data)
         except DataInvalidException as ex:
-            return RestErrorsResponse(ex.errors)
+            return RESTErrorsResponse(ex.errors)
         except (ConflictException, NotAllowedException):
             raise
-        except (RestException, PersistenceException) as ex:
-            return RestErrorResponse(ex.message)
+        except (RESTException, PersistenceException) as ex:
+            return RESTErrorResponse(ex.message)
 
     def delete(self):
         try:
             pk = self._get_pk()
             self._delete(pk)
-            return RestNoContentResponse()
-        except (RestException, PersistenceException) as ex:
-            return RestErrorResponse(ex.message)
+            return RESTNoContentResponse()
+        except (RESTException, PersistenceException) as ex:
+            return RESTErrorResponse(ex.message)
 
     def _delete(self, pk, via=None):
         via = via or []
@@ -608,7 +608,7 @@ class BaseObjectResource(DefaultRestObjectResource, BaseResource):
 class BaseModelResource(BaseObjectResource):
 
     register = True
-    form_class = RestModelForm
+    form_class = RESTModelForm
 
     def _get_queryset(self):
         return self.model.objects.all()

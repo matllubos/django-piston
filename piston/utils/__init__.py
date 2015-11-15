@@ -2,6 +2,8 @@ from __future__ import unicode_literals
 
 import re
 
+import six
+
 from collections import OrderedDict
 
 from django.http import HttpResponse
@@ -59,7 +61,7 @@ class rc_factory(object):
                 HttpResponse.content although this bug report (feature request)
                 suggests that it should: http://code.djangoproject.com/ticket/9403
                 """
-                if not isinstance(content, basestring) and hasattr(content, '__iter__'):
+                if not isinstance(content, six.string_types) and hasattr(content, '__iter__'):
                     self._container = {'messages': content}
                     self._base_content_is_iter = True
                 else:
@@ -197,14 +199,14 @@ def split_fields(fields_string):
         yield field
 
 
-class RestField(object):
+class RESTField(object):
 
     def __init__(self, name, subfieldset=None):
         assert isinstance(name, six.string_types)
-        assert subfieldset is None or isinstance(subfieldset, RestFieldset)
+        assert subfieldset is None or isinstance(subfieldset, RESTFieldset)
 
         self.name = name
-        self.subfieldset = subfieldset or RestFieldset()
+        self.subfieldset = subfieldset or RESTFieldset()
 
     def __deepcopy__(self, memo):
         return self.__class__(self.name, deepcopy(self.subfieldset))
@@ -223,7 +225,7 @@ class RestField(object):
         return '%s' % self.name
 
 
-class RestFieldset(object):
+class RESTFieldset(object):
 
     @classmethod
     def create_from_string(cls, fields_string):
@@ -242,12 +244,12 @@ class RestFieldset(object):
                     field_name, subfields_string = field.split('__', 1)
                     subfieldset = RFS.create_from_string(subfields_string)
 
-            fields.append(RestField(field_name, subfieldset))
-        return RestFieldset(*fields)
+            fields.append(RESTField(field_name, subfieldset))
+        return RESTFieldset(*fields)
 
     @classmethod
     def create_from_list(cls, fields_list):
-        if isinstance(fields_list, RestFieldset):
+        if isinstance(fields_list, RESTFieldset):
             return deepcopy(fields_list)
 
         fields = []
@@ -255,17 +257,17 @@ class RestFieldset(object):
             if isinstance(field, (list, tuple)):
                 field_name, subfield_list = field
 
-                fields.append(RestField(field_name, cls.create_from_list(subfield_list)))
+                fields.append(RESTField(field_name, cls.create_from_list(subfield_list)))
             else:
                 fields.append(field)
 
-        return RestFieldset(*fields)
+        return RESTFieldset(*fields)
 
     def __init__(self, *fields):
         self.fields_map = OrderedDict()
         for field in fields:
-            if not isinstance(field, RestField):
-                field = RestField(field)
+            if not isinstance(field, RESTField):
+                field = RESTField(field)
             self.append(field)
 
     @property
@@ -273,7 +275,7 @@ class RestFieldset(object):
         return self.fields_map.values()
 
     def join(self, rest_fieldset):
-        assert isinstance(rest_fieldset, RestFieldset)
+        assert isinstance(rest_fieldset, RESTFieldset)
 
         for rf in rest_fieldset.fields:
             if rf.name not in self.fields_map:
@@ -284,7 +286,7 @@ class RestFieldset(object):
         return self
 
     def intersection(self, rest_fieldset):
-        assert isinstance(rest_fieldset, RestFieldset)
+        assert isinstance(rest_fieldset, RESTFieldset)
 
         fields_map = self.fields_map
         self.fields_map = OrderedDict()
@@ -296,7 +298,7 @@ class RestFieldset(object):
         return self
 
     def extend_fields_fieldsets(self, rest_fieldset):
-        assert isinstance(rest_fieldset, RestFieldset)
+        assert isinstance(rest_fieldset, RESTFieldset)
 
         for rf in rest_fieldset.fields:
             if rf.subfieldset and rf.name in self.fields_map and not self.fields_map[rf.name].subfieldset:
@@ -308,7 +310,7 @@ class RestFieldset(object):
         if isinstance(rest_fieldset, (list, tuple, set)):
             rest_fieldset = RFS(*rest_fieldset)
 
-        assert isinstance(rest_fieldset, RestFieldset)
+        assert isinstance(rest_fieldset, RESTFieldset)
 
         fields_map = self.fields_map
         self.fields_map = OrderedDict()
@@ -333,7 +335,7 @@ class RestFieldset(object):
         if isinstance(rest_fieldset, (list, tuple, set)):
             rest_fieldset = RFS(*rest_fieldset)
 
-        assert isinstance(rest_fieldset, RestFieldset)
+        assert isinstance(rest_fieldset, RESTFieldset)
 
         values = []
         for rf in self.fields:
@@ -350,10 +352,10 @@ class RestFieldset(object):
         return self.fields_map.get(key)
 
     def append(self, field):
-        if isinstance(field, RestField):
+        if isinstance(field, RESTField):
             rest_field = field
         else:
-            rest_field = RestField(field)
+            rest_field = RESTField(field)
 
         if rest_field.name in self.fields_map:
             rest_field = rest_field.join(self.fields_map[rest_field.name])
@@ -365,7 +367,7 @@ class RestFieldset(object):
         if isinstance(rest_fieldset, (list, tuple, set)):
             rest_fieldset = RFS(*rest_fieldset)
 
-        assert isinstance(rest_fieldset, RestFieldset)
+        assert isinstance(rest_fieldset, RESTFieldset)
 
         for rf in rest_fieldset.fields:
             rf = deepcopy(rf)
@@ -380,6 +382,6 @@ class RestFieldset(object):
         return set(self.fields_map.keys())
 
 
-RF = RestField
-RFS = RestFieldset
+RF = RESTField
+RFS = RESTFieldset
 rfs = RFS.create_from_list

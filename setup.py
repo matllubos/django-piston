@@ -24,12 +24,12 @@ setup(
         'Topic :: Internet :: WWW/HTTP',
     ],
     install_requires=[
-        'django>=1.6',
+        'django>=1.8',
         'mimeparse>=0.1.4',
-        'django-chamber>=0.1.6'
+        'django-chamber>=0.1.7'
     ],
     dependency_links=[
-        'https://github.com/matllubos/django-chamber/tarball/0.1.6#egg=django-chamber-0.1.6',
+        'https://github.com/matllubos/django-chamber/tarball/0.1.7#egg=django-chamber-0.1.7',
         'https://github.com/matllubos/mimeparse/tarball/master#egg=mimeparse-0.1.4'
     ],
     zip_safe=False

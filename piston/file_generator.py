@@ -7,13 +7,14 @@ import csv
 import codecs
 
 from six.moves import cStringIO
+from six import BytesIO
 
 from datetime import datetime, date
 from decimal import Decimal
 
 from django.template import Context
 from django.template.loader import get_template
-from django.utils.encoding import force_text
+from django.utils.encoding import force_text, smart_text
 from django.conf import settings
 
 try:
@@ -38,7 +39,7 @@ TWOPLACES = Decimal(10) ** -2
 
 class CsvGenerator(object):
 
-    def __init__(self, delimiter=r';', quotechar=r'"', quoting=csv.QUOTE_ALL, encoding='utf-8'):
+    def __init__(self, delimiter=chr(59), quotechar=chr(34), quoting=csv.QUOTE_ALL, encoding='utf-8'):
         self.encoding = encoding
         self.quotechar = quotechar
         self.quoting = quoting
@@ -49,10 +50,10 @@ class CsvGenerator(object):
             writer = Py2CSV(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
         else:
             writer = Py3CSV(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
-       
+
         if header:
             writer.writerow(self._prepare_list(header))
-    
+
         for row in data:
             writer.writerow(self._prepare_list(row))
 
@@ -73,7 +74,7 @@ class CsvGenerator(object):
             value = force_text(value)
         return value.replace('&nbsp;', ' ')
 
-    
+
 class Py2CSV(object):
     """
     A CSV writer which will write rows to CSV file "f",
@@ -105,7 +106,7 @@ class Py2CSV(object):
 
 
 class Py3CSV(object):
-    
+
     def __init__(self, f, dialect=csv.excel, encoding='utf-8', **kwds):
         self.writer = csv.writer(f, dialect=dialect, **kwds)
         f.write(force_text(codecs.BOM_UTF8))  # BOM for Excel
@@ -116,7 +117,7 @@ class Py3CSV(object):
     def writerows(self, rows):
         for row in rows:
             self.writerow(row)
-    
+
 
 if xlsxwriter:
     class XlsxGenerator(object):
@@ -167,6 +168,5 @@ if pisa:
             context = Context({'pagesize': 'A4', 'headers': header, 'data': data})
             template = get_template(self.template_name)
             html = template.render(context)
-
-            pisa.pisaDocument(cStringIO(html.encode(self.encoding)), output_stream, encoding=self.encoding,
+            pisa.pisaDocument(BytesIO(html.encode(self.encoding)), output_stream, encoding=self.encoding,
                               link_callback=fetch_resources)

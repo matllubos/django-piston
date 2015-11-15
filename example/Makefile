@@ -9,6 +9,7 @@ DJANGO_DIR = dj
 VIRTUAL_ENV = var/ve
 LOCALPATH = $(CURDIR)
 PYTHONPATH = $(LOCALPATH)/$(DJANGO_DIR)
+PYTHON = python
 DJANGO_TEST_PORTS = 9000-10000
 SETTINGS = settings
 DJANGO_SETTINGS_MODULE = $(DJANGO_DIR).settings.$(SETTINGS)
@@ -39,7 +40,7 @@ pip:
 	$(PYTHON_BIN)/pip install --process-dependency-links --allow-all-external -r requirements/base.txt
 
 initvirtualenv:
-	virtualenv --no-site-packages $(VIRTUAL_ENV)
+	virtualenv -p $(PYTHON) --no-site-packages $(VIRTUAL_ENV)
 	$(PYTHON_BIN)/pip install --upgrade pip==1.5
 	$(PYTHON_BIN)/pip install setuptools --no-use-wheel --upgrade
 

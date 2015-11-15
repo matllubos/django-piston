@@ -3,12 +3,12 @@ from __future__ import unicode_literals
 from django.utils.translation import ugettext_lazy as _
 from django.db.models.query import QuerySet
 
-from .exception import RestException
+from .exception import RESTException
 
 
 class Paginator(object):
     """
-    Rest paginator for list and querysets
+    REST paginator for list and querysets
     """
 
     def __init__(self, qs, request):
@@ -28,7 +28,7 @@ class Paginator(object):
         if offset.isdigit():
             return int(offset)
         else:
-            raise RestException(_('Offset must be natural number'))
+            raise RESTException(_('Offset must be natural number'))
 
     def _get_base(self, request):
         base = request._rest_context.get('base')
@@ -37,7 +37,7 @@ class Paginator(object):
         elif base.isdigit():
             return int(base)
         else:
-            raise RestException(_('Base must be natural number or empty'))
+            raise RESTException(_('Base must be natural number or empty'))
 
     @property
     def page_qs(self):

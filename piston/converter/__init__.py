@@ -144,10 +144,10 @@ class XMLConverter(Converter):
                 self._to_xml(xml, value)
                 xml.endElement(key)
         else:
-            xml.characters(smart_unicode(data))
+            xml.characters(smart_text(data))
 
     def encode(self, request, converted_data, resource, result):
-        stream = cStringIO.StringIO()
+        stream = cStringIO()
 
         xml = SimplerXMLGenerator(stream, "utf-8")
         xml.startDocument()

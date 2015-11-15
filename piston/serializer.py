@@ -373,12 +373,12 @@ class ModelSerializer(Serializer):
         return out
 
     def _get_model_resource(self, request, obj):
-        from .resource import DefaultRestObjectResource
+        from .resource import DefaultRESTObjectResource
 
         if hasattr(obj, '_resource'):
             return obj._resource
         else:
-            return DefaultRestObjectResource()
+            return DefaultRESTObjectResource()
 
     def _get_fieldset_from_resource(self, request, obj, via, detailed, has_get_permission):
         resource = self._get_model_resource(request, obj)

@@ -1,8 +1,12 @@
 from __future__ import unicode_literals
 
 import re
+
 import warnings
+
 import six
+
+from six.moves.urllib.parse import urlparse
 
 from django.conf import settings
 from django.http import HttpResponse
@@ -32,8 +36,16 @@ from .serializer import ResourceSerializer
 from .converter import get_converter_name_from_request
 
 
-typemapper = { }
-resource_tracker = [ ]
+ACCESS_CONTROL_ALLOW_ORIGIN = 'Access-Control-Allow-Origin'
+ACCESS_CONTROL_EXPOSE_HEADERS = 'Access-Control-Expose-Headers'
+ACCESS_CONTROL_ALLOW_CREDENTIALS = 'Access-Control-Allow-Credentials'
+ACCESS_CONTROL_ALLOW_HEADERS = 'Access-Control-Allow-Headers'
+ACCESS_CONTROL_ALLOW_METHODS = 'Access-Control-Allow-Methods'
+ACCESS_CONTROL_MAX_AGE = 'Access-Control-Max-Age'
+
+
+typemapper = {}
+resource_tracker = []
 
 
 class ResourceMetaClass(type):
@@ -50,8 +62,8 @@ class ResourceMetaClass(type):
             if hasattr(new_cls, 'model'):
                 if already_registered(new_cls.model):
                     if not getattr(settings, 'PISTON_IGNORE_DUPE_MODELS', False):
-                        warnings.warn("Resource already registered for model %s, "
-                            "you may experience inconsistent results." % new_cls.model.__name__)
+                        warnings.warn('Resource already registered for model %s, '
+                                      'you may experience inconsistent results.' % new_cls.model.__name__)
 
                 typemapper[new_cls.model] = new_cls
 
@@ -109,8 +121,7 @@ class PermissionsResourceMixin(object):
     def __getattr__(self, name):
         for regex, method in (
                 (r'_check_(\w+)_permission', self._check_permission),
-                (r'can_call_(\w+)', self._check_call)
-            ):
+                (r'can_call_(\w+)', self._check_call)):
             m = re.match(regex, name)
             if m:
                 def _call(*args, **kwargs):
@@ -208,10 +219,41 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
             raise Http404
         return obj
 
+    def _get_cors_allowed_headers(self):
+        return ('X-Base', 'X-Offset', 'X-Fields', 'origin', 'content-type', 'accept')
+
+    def _get_cors_allowed_exposed_headers(self):
+        return ('X-Total', 'X-Serialization-Format-Options', 'X-Fields-Options')
+
+    def _get_cors_origins_whitelist(self):
+        return getattr(settings, 'PISTON_CORS_WHITELIST', ())
+
+    def _get_cors_max_age(self):
+        return getattr(settings, 'PISTON_CORS_MAX_AGE', 60 * 30)
+
+    def _cors_is_origin_in_whitelist(self, origin):
+        if not origin:
+            return False
+        else:
+            url = urlparse(origin)
+            return url.netloc in self._get_cors_origins_whitelist() or self._regex_domain_match(origin)
+
+    def _regex_domain_match(self, origin):
+        for domain_pattern in self._get_cors_origins_whitelist():
+            if re.match(domain_pattern, origin):
+                return origin
+
     def options(self):
         obj = self._get_obj_or_none()
-        allowed_methods = [method.upper() for method in self.get_allowed_methods(obj)]
-        return HeadersResponse(None, http_headers={'Allowed':','.join(allowed_methods)})
+        allowed_methods = ', '.join((method.upper() for method in self.get_allowed_methods(obj)))
+
+        http_headers = {'Allowed': allowed_methods}
+        if getattr(settings, 'PISTON_CORS', False):
+            http_headers.update({
+                ACCESS_CONTROL_ALLOW_METHODS: allowed_methods,
+                ACCESS_CONTROL_ALLOW_HEADERS: ', '.join(self._get_cors_allowed_headers()),
+            })
+        return HeadersResponse(None, http_headers=http_headers)
 
     def _is_single_obj_request(self, result):
         return isinstance(result, dict)
@@ -335,14 +377,28 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
         return '%s.%s' % (self._get_resource_name(), get_converter_name_from_request(self.request))
 
     def _get_headers(self, result, http_headers):
-        http_headers['X-Serialization-Format-Options'] = ','.join(self.serializer.SERIALIZATION_TYPES)
+        origin = self.request.META.get('HTTP_ORIGIN')
+
+        http_headers['X-Serialization-Format-Options'] = ', '.join(self.serializer.SERIALIZATION_TYPES)
         http_headers['Cache-Control'] = 'private, no-cache, no-store, max-age=0'
         http_headers['Pragma'] = 'no-cache'
         http_headers['Expires'] = '0'
         http_headers['Content-Disposition'] = 'inline; filename="%s"' % self._get_filename()
+
         fields = self.get_fields(obj=result)
         if fields:
             http_headers['X-Fields-Options'] = ','.join(fields.flat())
+
+        if getattr(settings, 'PISTON_CORS', False):
+            if origin and self._cors_is_origin_in_whitelist(origin):
+                http_headers[ACCESS_CONTROL_ALLOW_ORIGIN] = origin
+            http_headers[ACCESS_CONTROL_ALLOW_CREDENTIALS] = (
+                'true' if getattr(settings, 'PISTON_CORS_ALLOW_CREDENTIALS', True) else 'false'
+            )
+            cors_allowed_exposed_headers = self._get_cors_allowed_exposed_headers()
+            if cors_allowed_exposed_headers:
+                http_headers[ACCESS_CONTROL_EXPOSE_HEADERS] = ', '.join(cors_allowed_exposed_headers)
+            http_headers[ACCESS_CONTROL_MAX_AGE] = str(self._get_cors_max_age())
         return http_headers
 
     @classonlymethod

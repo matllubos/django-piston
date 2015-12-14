@@ -244,15 +244,14 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
                 return origin
 
     def options(self):
-        obj = self._get_obj_or_none()
-        allowed_methods = ', '.join((method.upper() for method in self.get_allowed_methods(obj)))
-
-        http_headers = {'Allowed': allowed_methods}
-        if getattr(settings, 'PISTON_CORS', False):
-            http_headers.update({
-                ACCESS_CONTROL_ALLOW_METHODS: allowed_methods,
-                ACCESS_CONTROL_ALLOW_HEADERS: ', '.join(self._get_cors_allowed_headers()),
-            })
+        if getattr(settings, 'PISTON_CORS', False) and self.request.META.get('HTTP_ORIGIN'):
+            http_headers = {
+                ACCESS_CONTROL_ALLOW_METHODS: self.request.META.get('HTTP_ACCESS_CONTROL_REQUEST_METHOD'),
+                ACCESS_CONTROL_ALLOW_HEADERS: ', '.join(self._get_cors_allowed_headers())
+            }
+        else:
+            obj = self._get_obj_or_none()
+            http_headers = {'Allowed': ', '.join((method.upper() for method in self.get_allowed_methods(obj)))}
         return HeadersResponse(None, http_headers=http_headers)
 
     def _is_single_obj_request(self, result):

@@ -168,5 +168,4 @@ if pisa:
             context = Context({'pagesize': 'A4', 'headers': header, 'data': data})
             template = get_template(self.template_name)
             html = template.render(context)
-            pisa.pisaDocument(BytesIO(html.encode(self.encoding)), output_stream, encoding=self.encoding,
-                              link_callback=fetch_resources)
+            pisa.pisaDocument(force_text(html), output_stream, encoding=self.encoding)

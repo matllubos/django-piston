@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import base64
 
 from germanium.rest import RESTTestCase
@@ -12,8 +13,12 @@ class DataProcessorsTestCase(PistonTestCase):
 
     @data_provider('get_users_data')
     def test_create_user_with_file(self, number, data):
-        data['contract'] = {'content_type':'plain/text', 'filename': 'contract.txt',
-                            'content': base64.b64encode(('Contract of %s' % data['email']).encode('ascii')).decode('utf-8')}
+        data['contract'] = {
+            'content_type': 'plain/text', 'filename': 'contract.txt',
+            'content': base64.b64encode(
+                ('Contract of %s code: šří+áýšé' % data['email']).encode('utf-8')
+            ).decode('utf-8')
+        }
         resp = self.post(self.USER_API_URL, data=self.serialize(data))
         self.assert_valid_JSON_created_response(resp)
         self.assert_not_equal(self.deserialize(resp)['contract'], None)

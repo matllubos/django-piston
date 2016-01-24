@@ -2,6 +2,7 @@ import sys
 import base64
 import inspect
 
+from six import BytesIO
 from six.moves import cStringIO
 
 from django.forms.fields import FileField
@@ -80,7 +81,7 @@ class FileDataPreprocessor(DataProcessor):
     def _process_file_data_field(self, data, files, key, data_item):
         try:
             filename = data_item.get('filename')
-            file_content = cStringIO(base64.b64decode(data_item.get('content')).decode('utf-8'))
+            file_content = BytesIO(base64.b64decode(data_item.get('content').encode('utf-8')))
             content_type = data_item.get('content_type')
             charset = data_item.get('charset')
             files[key] = InMemoryUploadedFile(
@@ -88,7 +89,7 @@ class FileDataPreprocessor(DataProcessor):
                 size=sys.getsizeof(file_content), charset=charset
             )
             data[key] = filename
-        except TypeError as ex:
+        except TypeError:
             self.errors[key] = ugettext('File content is not in base64 format')
 
     def _process_field(self, data, files, key, data_item):

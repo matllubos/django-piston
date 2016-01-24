@@ -6,5 +6,6 @@ pep8==1.6.2
 six==1.10.0
 xhtml2pdf
 https://github.com/LukasRychtecky/germanium/tarball/1.0.4#egg=germanium-1.0.4
-https://github.com/matllubos/django-piston/tarball/1.2.10#egg=django-piston-1.2.10
+https://github.com/matllubos/django-piston/tarball/1.2.12#egg=django-piston-1.2.12
+https://github.com/matllubos/xhtml2pdf/tarball/develop
 coverage==4.0.2

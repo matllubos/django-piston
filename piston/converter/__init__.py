@@ -183,7 +183,7 @@ class GeneratorConverter(Converter):
     Output is flat.
 
     It is necessary set generator_class as class attribute
-    
+
     This class contains little bit low-level implementation
     """
 

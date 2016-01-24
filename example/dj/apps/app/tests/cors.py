@@ -37,17 +37,6 @@ class CorsTestCase(PistonTestCase):
         self.assert_false(resp.has_header(ACCESS_CONTROL_ALLOW_METHODS))
         self.assert_false(resp.has_header(ACCESS_CONTROL_MAX_AGE))
 
-    @override_settings(PISTON_CORS=True)
-    @data_provider('get_users_data')
-    def test_option_with_turned_on_cors_headers_is_included_without_origin(self, number, data):
-        resp = self.options(self.USER_API_URL)
-        self.assert_false(resp.has_header(ACCESS_CONTROL_ALLOW_ORIGIN))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_EXPOSE_HEADERS))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_ALLOW_CREDENTIALS))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_ALLOW_HEADERS))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_ALLOW_METHODS))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_MAX_AGE))
-
     @override_settings(PISTON_CORS=True, PISTON_CORS_WHITELIST=[FOO_DOMAIN[7:]])
     @data_provider('get_users_data')
     def test_option_with_turned_on_cors_headers_is_included_with_valid_origin(self, number, data):
@@ -55,8 +44,8 @@ class CorsTestCase(PistonTestCase):
         self.assert_false(resp.has_header(ACCESS_CONTROL_ALLOW_ORIGIN))
         self.assert_true(resp.has_header(ACCESS_CONTROL_EXPOSE_HEADERS))
         self.assert_true(resp.has_header(ACCESS_CONTROL_ALLOW_CREDENTIALS))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_ALLOW_HEADERS))
-        self.assert_true(resp.has_header(ACCESS_CONTROL_ALLOW_METHODS))
+        self.assert_false(resp.has_header(ACCESS_CONTROL_ALLOW_HEADERS))
+        self.assert_false(resp.has_header(ACCESS_CONTROL_ALLOW_METHODS))
         self.assert_true(resp.has_header(ACCESS_CONTROL_MAX_AGE))
 
         resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': FOO_DOMAIN})
@@ -111,12 +100,19 @@ class CorsTestCase(PistonTestCase):
         resp = self.options(self.USER_API_URL)
         self.assert_equal(resp[ACCESS_CONTROL_ALLOW_CREDENTIALS], 'false')
 
-    @override_settings(PISTON_CORS=True, PISTON_CORS_ALLOW_CREDENTIALS=False)
+    @override_settings(PISTON_CORS=True, PISTON_CORS_ALLOW_CREDENTIALS=False, PISTON_CORS_WHITELIST=[FOO_DOMAIN[7:]])
     @data_provider('get_users_data')
     def test_cors_allow_headers(self, number, data):
-        resp = self.options(self.USER_API_URL)
+        resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': FOO_DOMAIN})
         self.assert_equal(resp[ACCESS_CONTROL_ALLOW_HEADERS],
                           ', '.join(('X-Base', 'X-Offset', 'X-Fields', 'origin', 'content-type', 'accept')))
+
+        resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': BAR_DOMAIN})
+        self.assert_equal(resp[ACCESS_CONTROL_ALLOW_HEADERS],
+                          ', '.join(('X-Base', 'X-Offset', 'X-Fields', 'origin', 'content-type', 'accept')))
+
+        resp = self.options(self.USER_API_URL)
+        self.assert_false(ACCESS_CONTROL_ALLOW_HEADERS in resp)
 
     @override_settings(PISTON_CORS=True, PISTON_CORS_ALLOW_CREDENTIALS=False)
     @data_provider('get_users_data')
@@ -128,5 +124,19 @@ class CorsTestCase(PistonTestCase):
     @override_settings(PISTON_CORS=True, PISTON_CORS_ALLOW_CREDENTIALS=False)
     @data_provider('get_users_data')
     def test_cors_allow_methods(self, number, data):
+        resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': FOO_DOMAIN})
+        self.assert_equal(set(resp[ACCESS_CONTROL_ALLOW_METHODS].split(', ')), {'OPTIONS'})
+
+        resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': FOO_DOMAIN,
+                                                        'HTTP_ACCESS_CONTROL_REQUEST_METHOD': 'GET'})
+        self.assert_equal(set(resp[ACCESS_CONTROL_ALLOW_METHODS].split(', ')), {'GET'})
+
+        resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': BAR_DOMAIN})
+        self.assert_equal(set(resp[ACCESS_CONTROL_ALLOW_METHODS].split(', ')), {'OPTIONS'})
+
+        resp = self.options(self.USER_API_URL, headers={'HTTP_ORIGIN': BAR_DOMAIN,
+                                                        'HTTP_ACCESS_CONTROL_REQUEST_METHOD': 'POST'})
+        self.assert_equal(set(resp[ACCESS_CONTROL_ALLOW_METHODS].split(', ')), {'POST'})
+
         resp = self.options(self.USER_API_URL)
-        self.assert_equal(set(resp[ACCESS_CONTROL_ALLOW_METHODS].split(', ')), {'OPTIONS', 'HEAD', 'POST', 'GET'})
+        self.assert_false(ACCESS_CONTROL_ALLOW_METHODS in resp)

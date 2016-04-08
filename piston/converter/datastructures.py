@@ -1,10 +1,12 @@
-from django.utils.datastructures import SortedDict
+from __future__ import unicode_literals
+
 from django.utils.encoding import force_text
 from django.db import models
 from django.db.models.fields import FieldDoesNotExist
 from django.core.exceptions import ObjectDoesNotExist
 from django.template.defaultfilters import capfirst
 from django.forms.forms import pretty_name
+from django.utils.encoding import python_2_unicode_compatible
 
 from chamber.utils import get_class_method
 
@@ -13,14 +15,15 @@ from collections import OrderedDict
 from piston.utils import split_fields, is_match, get_model_from_descriptor
 
 
-class ModelSortedDict(OrderedDict):
+class ModelOrderedDict(OrderedDict):
 
     def __init__(self, model, resource, *args, **kwargs):
-        super(ModelSortedDict, self).__init__(*args, **kwargs)
+        super(ModelOrderedDict, self).__init__(*args, **kwargs)
         self.model = model
         self.resource = resource
 
 
+@python_2_unicode_compatible
 class Field(object):
 
     def __init__(self, key_path, label_path):
@@ -29,9 +32,6 @@ class Field(object):
 
     def __str__(self):
         return capfirst(' '.join(map(force_text, self.key_path))).strip()
-
-    def __unicode__(self):
-        return capfirst(' '.join(map(force_text, self.label_path))).strip()
 
     def __hash__(self):
             return hash('__'.join(self.key_path))
@@ -94,8 +94,7 @@ class FieldsetGenerator(object):
     def _get_label(self, field_name, model):
         if model:
             return (self._get_field_label_from_model(model, self._get_resource(model), field_name) or
-                        (field_name != '_obj_name' and field_name or '')
-                    )
+                    (field_name != '_obj_name' and field_name or ''))
         else:
             return field_name
 
@@ -130,8 +129,8 @@ class DataFieldset(object):
 
     def __init__(self, data):
         self.root = {}
-        # SordedDict is used as SortedSet
-        self.fieldset = SortedDict()
+        # OrderedDict is used as OrderedSet
+        self.fieldset = OrderedDict()
         self._init_data(data)
 
     def _tree_contains(self, key_path):

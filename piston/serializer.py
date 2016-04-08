@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 import decimal
 import datetime
 import inspect
@@ -9,15 +11,16 @@ from django.db.models.fields.files import FileField
 from django.db.models.fields.related import ForeignRelatedObjectsDescriptor, SingleRelatedObjectDescriptor
 from django.utils import formats, timezone
 from django.utils.encoding import force_text
-from django.utils.translation import ugettext as _
+from django.utils.translation import ugettext as _, ugettext
 from django.utils.html import conditional_escape
 
 from chamber.utils.datastructures import Enum
+from chamber.utils import get_class_method
 
 from .exception import MimerDataException, UnsupportedMediaTypeException
 from .utils import coerce_put_post, rfs
 from .converter import get_converter_from_request
-from .converter.datastructures import ModelSortedDict
+from .converter.datastructures import ModelOrderedDict
 
 value_serializers = []
 
@@ -122,7 +125,7 @@ class ResourceSerializer(Serializer):
         rm = request.method.upper()
         # Django's internal mechanism doesn't pick up
         # PUT request, so we trick it a little here.
-        if rm == "PUT":
+        if rm == 'PUT':
             coerce_put_post(request)
 
         if rm in ('POST', 'PUT'):
@@ -212,8 +215,7 @@ class ModelSerializer(Serializer):
     RESERVED_FIELDS = {'read', 'update', 'create', 'delete', 'model', 'allowed_methods', 'fields', 'exclude'}
 
     def _get_resource_method_fields(self, resource, fields):
-        out = dict()
-        # TODO
+        out = {}
         for field in fields.flat() - self.RESERVED_FIELDS:
             t = getattr(resource, str(field), None)
             if t and callable(t):
@@ -221,14 +223,14 @@ class ModelSerializer(Serializer):
         return out
 
     def _get_model_fields(self, obj):
-        out = dict()
+        out = {}
         for f in obj._meta.fields:
             if hasattr(f, 'serialize') and f.serialize:
                 out[f.name] = f
         return out
 
     def _get_m2m_fields(self, obj):
-        out = dict()
+        out = {}
         for mf in obj._meta.many_to_many:
             if mf.serialize:
                 out[mf.name] = mf
@@ -237,7 +239,7 @@ class ModelSerializer(Serializer):
     def _raw_to_verbose(self, raw):
         verbose = raw
         if isinstance(raw, bool):
-            verbose = raw and _('yes') or _('no')
+            verbose = raw and ugettext('yes') or ugettext('no')
         elif isinstance(raw, datetime.datetime):
             verbose = formats.localize(timezone.template_localtime(raw))
         elif isinstance(raw, (datetime.date, datetime.time)):
@@ -259,17 +261,20 @@ class ModelSerializer(Serializer):
 
         if len(method_kwargs_names) == len(method_kwargs):
             return self._to_python_chain(request, self._val_to_raw_verbose(method(**method_kwargs)),
-                                         serialization_format, **kwargs)
+                                         serialization_format, allow_tags=getattr(method, 'allow_tags', False),
+                                         **kwargs)
 
     def _model_field_to_python(self, field, request, obj, serialization_format, **kwargs):
         if not field.rel:
             val = self._get_model_value(obj, field)
         else:
             val = getattr(obj, field.name)
-        return self._to_python_chain(request, val, serialization_format, **kwargs)
+        return self._to_python_chain(request, val, serialization_format,
+                                     allow_tags=getattr(field, 'allow_tags', False), **kwargs)
 
     def _m2m_field_to_python(self, field, request, obj, serialization_format, **kwargs):
-        return [self._to_python_chain(request, m, serialization_format, **kwargs)
+        return [self._to_python_chain(request, m, serialization_format,
+                                      allow_tags=getattr(field, 'allow_tags', False), **kwargs)
                 for m in getattr(obj, field.name).all()]
 
     def _get_reverse_excluded_fields(self, field, obj):
@@ -336,25 +341,25 @@ class ModelSerializer(Serializer):
         elif field_name in model_fields:
             return self._model_field_to_python(model_fields[field_name], request, obj, serialization_format, **kwargs)
         else:
-            try:
-                val = getattr(obj, field_name, None)
-                if hasattr(val, 'all'):
-                    return self._reverse_qs_to_python(val, field_name, request, obj, serialization_format, **kwargs)
-                elif callable(val):
-                    return self._method_to_python(val, request, obj, serialization_format, **kwargs)
-                elif isinstance(val, Model):
-                    return self._reverse_to_python(val, field_name, request, obj, serialization_format, **kwargs)
-                else:
-                    return self._to_python_chain(request, self._val_to_raw_verbose(val), serialization_format, **kwargs)
-            except:
-                return None
+            val = getattr(obj, field_name, None)
+            if hasattr(val, 'all'):
+                return self._reverse_qs_to_python(val, field_name, request, obj, serialization_format, **kwargs)
+            elif isinstance(val, Model):
+                return self._reverse_to_python(val, field_name, request, obj, serialization_format, **kwargs)
+            elif callable(val):
+                return self._method_to_python(val, request, obj, serialization_format, **kwargs)
+            else:
+                method = get_class_method(obj, field_name)
+                return self._to_python_chain(request, self._val_to_raw_verbose(val), serialization_format,
+                                             allow_tags=method is not None and getattr(method, 'allow_tags', False),
+                                             **kwargs)
 
     def _fields_to_python(self, request, obj, serialization_format, fieldset, requested_fieldset, **kwargs):
         resource_method_fields = self._get_resource_method_fields(self._get_model_resource(request, obj), fieldset)
         model_fields = self._get_model_fields(obj)
         m2m_fields = self._get_m2m_fields(obj)
 
-        out = ModelSortedDict(obj, self._get_model_resource(request, obj))
+        out = ModelOrderedDict(obj, self._get_model_resource(request, obj))
         for field in fieldset.fields:
             subkwargs = self._copy_kwargs(self._get_model_resource(request, obj), kwargs)
             requested_field = None
@@ -369,12 +374,12 @@ class ModelSerializer(Serializer):
         return out
 
     def _get_model_resource(self, request, obj):
-        from .resource import DefaultRestObjectResource
+        from .resource import DefaultRESTObjectResource
 
         if hasattr(obj, '_resource'):
             return obj._resource
         else:
-            return DefaultRestObjectResource()
+            return DefaultRESTObjectResource()
 
     def _get_fieldset_from_resource(self, request, obj, via, detailed, has_get_permission):
         resource = self._get_model_resource(request, obj)
@@ -414,7 +419,7 @@ class ModelSerializer(Serializer):
         return fieldset
 
     def _to_python(self, request, obj, serialization_format, requested_fieldset=None,
-                   extended_fieldset=None, detailed=False, exclude_fields=None, **kwargs):
+                   extended_fieldset=None, detailed=False, exclude_fields=None, allow_tags=False, **kwargs):
         exclude_fields = exclude_fields or []
         fieldset = self._get_fieldset(request, obj, extended_fieldset, requested_fieldset, exclude_fields,
                                       kwargs.get('via'), detailed)

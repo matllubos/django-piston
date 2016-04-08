@@ -1,11 +1,13 @@
 from __future__ import unicode_literals
 
 import six
-
 import os
+
 import csv
-import cStringIO
 import codecs
+
+from six.moves import cStringIO
+from six import BytesIO
 
 from datetime import datetime, date
 from decimal import Decimal
@@ -44,7 +46,10 @@ class CsvGenerator(object):
         self.delimiter = delimiter
 
     def generate(self, header, data, output_stream):
-        writer = UnicodeWriter(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
+        if six.PY2:
+            writer = Py2CSV(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
+        else:
+            writer = Py3CSV(output_stream, delimiter=self.delimiter, quotechar=self.quotechar, quoting=self.quoting)
 
         if header:
             writer.writerow(self._prepare_list(header))
@@ -56,7 +61,7 @@ class CsvGenerator(object):
         prepared_row = []
 
         for value in values:
-            value = self._prepare_value(value.get('value') if isinstance(value, dict) else value);
+            value = self._prepare_value(value.get('value') if isinstance(value, dict) else value)
             prepared_row.append(value)
         return prepared_row
 
@@ -70,7 +75,7 @@ class CsvGenerator(object):
         return value.replace('&nbsp;', ' ')
 
 
-class UnicodeWriter:
+class Py2CSV(object):
     """
     A CSV writer which will write rows to CSV file "f",
     which is encoded in the given encoding.
@@ -79,7 +84,7 @@ class UnicodeWriter:
 
     def __init__(self, f, dialect=csv.excel, encoding='utf-8', **kwds):
         # Redirect output to a queue
-        self.queue = cStringIO.StringIO()
+        self.queue = cStringIO()
         self.writer = csv.writer(self.queue, dialect=dialect, **kwds)
         self.stream = f
         self.stream.write(codecs.BOM_UTF8)  # BOM for Excel
@@ -94,6 +99,20 @@ class UnicodeWriter:
         self.stream.write(data)
         # empty queue
         self.queue.truncate(0)
+
+    def writerows(self, rows):
+        for row in rows:
+            self.writerow(row)
+
+
+class Py3CSV(object):
+
+    def __init__(self, f, dialect=csv.excel, encoding='utf-8', **kwds):
+        self.writer = csv.writer(f, dialect=dialect, **kwds)
+        f.write(force_text(codecs.BOM_UTF8))  # BOM for Excel
+
+    def writerow(self, row):
+        self.writer.writerow(row)
 
     def writerows(self, rows):
         for row in rows:
@@ -115,7 +134,7 @@ if xlsxwriter:
 
             if header:
                 for col, head in enumerate(header):
-                    ws.write(row, col, unicode(head))
+                    ws.write(row, col, force_text(head))
                 row += 1
 
             for data_row in data:
@@ -150,6 +169,4 @@ if pisa:
             context = Context({'pagesize': 'A4', 'headers': header, 'data': data})
             template = get_template(self.template_name)
             html = template.render(context)
-
-            pisa.pisaDocument(cStringIO.StringIO(html.encode(self.encoding)), output_stream, encoding=self.encoding,
-                              link_callback=fetch_resources)
+            pisa.pisaDocument(force_text(html), output_stream, encoding=self.encoding, link_callback=fetch_resources)

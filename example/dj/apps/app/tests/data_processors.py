@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import base64
 
 from germanium.rest import RESTTestCase
@@ -12,8 +13,12 @@ class DataProcessorsTestCase(PistonTestCase):
 
     @data_provider('get_users_data')
     def test_create_user_with_file(self, number, data):
-        data['contract'] = {'content_type':'plain/text', 'filename': 'contract.txt',
-                            'content': base64.b64encode('Contract of %s' % data['email'])}
+        data['contract'] = {
+            'content_type': 'plain/text', 'filename': 'contract.txt',
+            'content': base64.b64encode(
+                ('Contract of %s code: šří+áýšé' % data['email']).encode('utf-8')
+            ).decode('utf-8')
+        }
         resp = self.post(self.USER_API_URL, data=self.serialize(data))
         self.assert_valid_JSON_created_response(resp)
         self.assert_not_equal(self.deserialize(resp)['contract'], None)
@@ -59,6 +64,9 @@ class DataProcessorsTestCase(PistonTestCase):
 
         user_data['created_issues'] = {'add':(self.get_issue_data(), self.get_issue_data(), self.get_issue_data())}
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
+        
+        print self.serialize(user_data)
+        print resp
         self.assert_valid_JSON_created_response(resp)
         self.assert_equal(issues_before_count + 3, Issue.objects.all().count())
         user_pk = self.get_pk(resp)
@@ -78,20 +86,20 @@ class DataProcessorsTestCase(PistonTestCase):
         user_data['created_issues'] = {'set':(None, "", None, {}, [None])}
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('set', self.deserialize(resp).get('errors', {}).get('created_issues', {}))
+        self.assert_in('set', self.deserialize(resp).get('messages', {}).get('errors', {}).get('created_issues', {}))
 
         user_data['created_issues'] = {'add':(None, "", None, [], {}, {"id":500}),
                                        'remove':(None, "", None, {}, {"id":500}, [])}
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('add', self.deserialize(resp).get('errors', {}).get('created_issues', {}))
-        self.assert_in('remove', self.deserialize(resp).get('errors', {}).get('created_issues', {}))
+        self.assert_in('add', self.deserialize(resp).get('messages', {}).get('errors', {}).get('created_issues', {}))
+        self.assert_in('remove', self.deserialize(resp).get('messages', {}).get('errors', {}).get('created_issues', {}))
 
         user_data['created_issues'] = {'add':None, 'remove':None}
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('add', self.deserialize(resp).get('errors', {}).get('created_issues', {}))
-        self.assert_in('remove', self.deserialize(resp).get('errors', {}).get('created_issues', {}))
+        self.assert_in('add', self.deserialize(resp).get('messages', {}).get('errors', {}).get('created_issues', {}))
+        self.assert_in('remove', self.deserialize(resp).get('messages', {}).get('errors', {}).get('created_issues', {}))
 
     @data_provider('get_issues_and_users_data')
     def test_atomic_set_issue_with_watchers(self, number, issue_data, user_data):
@@ -129,35 +137,35 @@ class DataProcessorsTestCase(PistonTestCase):
     @data_provider('get_issues_and_users_data')
     def test_atomic_add_delete_and_set_issue_with_watchers_with_errors(self, number, issue_data, user_data):
         issue_data['created_by'] = user_data
-        issue_data['watched_by'] = {'add': [None, [], 'sdffsda', {}], 'remove': ['ddd', 5, {}]}
+        issue_data['watched_by'] = {'add': [None, [], 'invalid_text', {}], 'remove': ['invalid_text', 5, {}]}
         resp = self.post(self.ISSUE_API_URL, data=self.serialize(issue_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('add', self.deserialize(resp).get('errors').get('watched_by'))
-        self.assert_in('remove', self.deserialize(resp).get('errors').get('watched_by'))
+        self.assert_in('add', self.deserialize(resp).get('messages', {}).get('errors').get('watched_by'))
+        self.assert_in('remove', self.deserialize(resp).get('messages', {}).get('errors').get('watched_by'))
 
         issue_data['created_by'] = user_data
-        issue_data['watched_by'] = {'set': [None, [], 'sdffsda', {}]}
+        issue_data['watched_by'] = {'set': [None, [], 'invalid_text', {}]}
         resp = self.post(self.ISSUE_API_URL, data=self.serialize(issue_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('set', self.deserialize(resp).get('errors').get('watched_by'))
+        self.assert_in('set', self.deserialize(resp).get('messages', {}).get('errors').get('watched_by'))
 
         issue_data['created_by'] = user_data
         issue_data['watched_by'] = {'set': ''}
         resp = self.post(self.ISSUE_API_URL, data=self.serialize(issue_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('set', self.deserialize(resp).get('errors').get('watched_by'))
+        self.assert_in('set', self.deserialize(resp).get('messages', {}).get('errors').get('watched_by'))
 
         issue_data['created_by'] = user_data
         issue_data['watched_by'] = {'set': None}
         resp = self.post(self.ISSUE_API_URL, data=self.serialize(issue_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('set', self.deserialize(resp).get('errors').get('watched_by'))
+        self.assert_in('set', self.deserialize(resp).get('messages', {}).get('errors').get('watched_by'))
 
         issue_data['created_by'] = user_data
         issue_data['watched_by'] = {'set': {}}
         resp = self.post(self.ISSUE_API_URL, data=self.serialize(issue_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('set', self.deserialize(resp).get('errors').get('watched_by'))
+        self.assert_in('set', self.deserialize(resp).get('messages', {}).get('errors').get('watched_by'))
 
     @data_provider('get_issues_and_users_data')
     def test_create_issue_via_user_one_to_one(self, number, issue_data, user_data):
@@ -190,9 +198,9 @@ class DataProcessorsTestCase(PistonTestCase):
         user_data['leading_issue'] = {}
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('leading_issue', self.deserialize(resp).get('errors'))
+        self.assert_in('leading_issue', self.deserialize(resp).get('messages', {}).get('errors'))
 
         user_data['leading_issue'] = 'bad data'
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
         self.assert_http_bad_request(resp)
-        self.assert_in('leading_issue', self.deserialize(resp).get('errors'))
+        self.assert_in('leading_issue', self.deserialize(resp).get('messages', {}).get('errors'))

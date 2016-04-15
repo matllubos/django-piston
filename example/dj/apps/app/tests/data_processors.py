@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import base64
 
 from germanium.rest import RESTTestCase
@@ -64,9 +66,7 @@ class DataProcessorsTestCase(PistonTestCase):
 
         user_data['created_issues'] = {'add':(self.get_issue_data(), self.get_issue_data(), self.get_issue_data())}
         resp = self.post(self.USER_API_URL, data=self.serialize(user_data))
-        
-        print self.serialize(user_data)
-        print resp
+
         self.assert_valid_JSON_created_response(resp)
         self.assert_equal(issues_before_count + 3, Issue.objects.all().count())
         user_pk = self.get_pk(resp)

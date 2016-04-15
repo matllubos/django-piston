@@ -131,8 +131,8 @@ class ResourceSerializer(Serializer):
         if rm in ('POST', 'PUT'):
             try:
                 converter, _ = get_converter_from_request(request, True)
-                request.data = converter().decode(request, request.body)
-            except (TypeError, ValueError):
+                request.data = converter().decode(request, force_text(request.body))
+            except (TypeError, ValueError) as ex:
                 raise MimerDataException
             except NotImplementedError:
                 raise UnsupportedMediaTypeException
@@ -162,7 +162,7 @@ class DictSerializer(Serializer):
     def _to_python(self, request, thing, serialization_format, requested_fieldset=None,
                    extended_fieldset=None, detailed=False, exclude_fields=None, **kwargs):
         return dict([(k, self._to_python_chain(request, v, serialization_format, **kwargs))
-                     for k, v in thing.iteritems()])
+                     for k, v in thing.items()])
 
     def _can_transform_to_python(self, thing):
         return isinstance(thing, dict)

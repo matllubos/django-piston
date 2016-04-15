@@ -10,7 +10,7 @@ from six import BytesIO
 from django.db.models.fields import FieldDoesNotExist
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.utils.encoding import smart_unicode, force_text
+from django.utils.encoding import force_text
 from django.utils.xmlutils import SimplerXMLGenerator
 from django.core.serializers.json import DateTimeAwareJSONEncoder
 from django.db.models.base import Model
@@ -134,12 +134,12 @@ class XMLConverter(Converter):
                 self._to_xml(xml, item)
                 xml.endElement('resource')
         elif isinstance(data, dict):
-            for key, value in data.iteritems():
+            for key, value in data.items():
                 xml.startElement(key, {})
                 self._to_xml(xml, value)
                 xml.endElement(key)
         else:
-            xml.characters(smart_unicode(data))
+            xml.characters(force_text(data))
 
     def encode(self, request, converted_data, resource, result):
         stream = cStringIO()

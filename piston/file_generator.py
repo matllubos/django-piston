@@ -39,7 +39,7 @@ TWOPLACES = Decimal(10) ** -2
 
 class CsvGenerator(object):
 
-    def __init__(self, delimiter=b';', quotechar=b'"', quoting=csv.QUOTE_ALL, encoding='utf-8'):
+    def __init__(self, delimiter=chr(59), quotechar=chr(34), quoting=csv.QUOTE_ALL, encoding='utf-8'):
         self.encoding = encoding
         self.quotechar = quotechar
         self.quoting = quoting

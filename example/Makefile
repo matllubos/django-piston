@@ -9,7 +9,7 @@ DJANGO_DIR = dj
 VIRTUAL_ENV = var/ve
 LOCALPATH = $(CURDIR)
 PYTHONPATH = $(LOCALPATH)/$(DJANGO_DIR)
-PYTHON = python
+PYTHON = python3
 DJANGO_TEST_PORTS = 9000-10000
 SETTINGS = settings
 DJANGO_SETTINGS_MODULE = $(DJANGO_DIR).settings.$(SETTINGS)
@@ -17,7 +17,7 @@ DJANGO_POSTFIX = --settings=$(DJANGO_SETTINGS_MODULE) --pythonpath=$(PYTHONPATH)
 PYTHON_BIN = $(VIRTUAL_ENV)/bin
 TYPE = dev
 OS = $(shell uname)
-PYTHON_VERSION_MAJOR = 2.7
+PYTHON_VERSION_MAJOR = 3.4
 
 INIT_DATA_PATH = data
 INIT_DATA_FILE = $(INIT_DATA_PATH)/init.json
@@ -62,13 +62,9 @@ initdb:
 
 syncdb:
 	$(PYTHON_BIN)/python manage.py syncdb --noinput $(DJANGO_POSTFIX)
-	$(MAKE) migrate
 
 initdata: syncmedia
 	if [ -a $(LOCALPATH)/$(INIT_DATA_FILE) ]; then $(PYTHON_BIN)/python manage.py loaddata $(LOCALPATH)/$(INIT_DATA_FILE) $(DJANGO_POSTFIX); fi;
-
-migrate:
-	$(PYTHON_BIN)/python manage.py migrate $(DJANGO_POSTFIX)
 
 resetdb:
 	$(PYTHON_BIN)/python manage.py reset_db --noinput $(DJANGO_POSTFIX)

@@ -5,7 +5,6 @@ import base64
 import inspect
 
 from six import BytesIO
-from six.moves import cStringIO
 
 import django
 from django.forms.fields import FileField
@@ -114,11 +113,9 @@ class FileDataPreprocessor(DataProcessor):
 class ResourceProcessorMixin(object):
 
     def _get_related_model(self, rel_object):
-        if django.get_version() >= '1.7':
-            print 'eeee'
+        if django.get_version() >= '1.8':
             return rel_object.related_model
         else:
-            print rel_object.model
             return rel_object.model
 
     def _create_or_update_related_object(self, data, model):
@@ -344,8 +341,8 @@ class ReverseMultipleDataPreprocessor(MultipleDataProcessorMixin, ResourceProces
     def _create_or_update_reverse_related_objects_add(self, data, key, data_item, rel_object):
         if isinstance(data, (tuple, list)):
             try:
-                self._create_and_return_new_object_pk_list(data, rel_object.model, self.inst,
-                                                           self._get_related_model(rel_object))
+                self._create_and_return_new_object_pk_list(data, self._get_related_model(rel_object), self.inst, 
+                                                           rel_object.field.name)
             except DataInvalidException as ex:
                 self._append_errors(key, 'add', ex.errors)
         else:

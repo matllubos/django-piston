@@ -324,7 +324,6 @@ class BaseResource(six.with_metaclass(ResourceMetaClass, PermissionsResourceMixi
 
         try:
             content, ct = self._serialize(result)
-
         except UnsupportedMediaTypeException:
             content = ''
             status_code = 415
